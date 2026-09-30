@@ -18,9 +18,9 @@
 
 ## OTA 升级
 
-1. PM2005 设备使用 `dist/bry88ab151k-pm2005-ld2410b-ota.bin`。
-2. PM2105 设备使用 `dist/bry88ab151k-pm2105-ld2410b-ota.bin`。
-3. 在 ESPHome Dashboard 或设备网页中选择对应的 `.bin` 进行 OTA。
+1. PM2005 设备下载并解压 `dist/bry88ab151k-pm2005-ld2410b-ota.zip`。
+2. PM2105 设备下载并解压 `dist/bry88ab151k-pm2105-ld2410b-ota.zip`。
+3. 在 ESPHome Dashboard 或设备网页中选择解压得到的 `.bin` 进行 OTA。
 4. 升级后按上游流程重新配网：连接设备发出的 `DAIKIN Fallback Hotspot`，在弹出的配网页面填写 Wi-Fi。热点未设置密码，建议接通后立即完成配网。
 5. 重新加入 Home Assistant 后，检查 `Radar Presence`、移动/静止目标和距离实体。
 
