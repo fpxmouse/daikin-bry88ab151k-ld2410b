@@ -7,9 +7,10 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $tools = Join-Path $root ".tools\esphome-$EspHomeVersion"
 $dist = Join-Path $root "dist"
+$firmwareBin = Join-Path $root "firmware\bin"
 $stage = Join-Path ([System.IO.Path]::GetTempPath()) ("daikin-air-sensor-" + [guid]::NewGuid().ToString("N"))
 
-New-Item -ItemType Directory -Force -Path $tools, $dist, $stage | Out-Null
+New-Item -ItemType Directory -Force -Path $tools, $dist, $firmwareBin, $stage | Out-Null
 
 if (-not (Test-Path (Join-Path $tools "esphome\__init__.py"))) {
     & $Python -m pip install --target $tools "esphome==$EspHomeVersion"
@@ -33,7 +34,9 @@ try {
         if (-not (Test-Path -LiteralPath $source)) {
             throw "OTA image not found after compiling $model`: $source"
         }
-        Copy-Item -LiteralPath $source -Destination (Join-Path $dist "bry88ab151k-$model-ld2410b-ota.bin") -Force
+        $fileName = "bry88ab151k-$model-ld2410b-ota.bin"
+        Copy-Item -LiteralPath $source -Destination (Join-Path $dist $fileName) -Force
+        Copy-Item -LiteralPath $source -Destination (Join-Path $firmwareBin $fileName) -Force
     }
 } finally {
     $tempPrefix = Join-Path ([System.IO.Path]::GetTempPath()) "daikin-air-sensor-"
