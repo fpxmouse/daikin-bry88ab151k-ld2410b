@@ -1,0 +1,6 @@
+substitutions:
+  pm_model: "PM2005"
+  pm_header: "pm2005.h"
+
+packages:
+  common: !include common.yaml

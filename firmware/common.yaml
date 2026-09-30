@@ -1,0 +1,328 @@
+esphome:
+  name: daikin-air-sensor
+  name_add_mac_suffix: true
+  project:
+    name: "DAIKIN.BRY88AB151K"
+    version: "${pm_model}+LD2410B"
+  includes:
+    - "include/cm1106.h"
+    - "include/${pm_header}"
+
+esp32:
+  board: nodemcu-32s
+
+wifi:
+  ap:
+    ssid: "DAIKIN Fallback Hotspot"
+
+captive_portal:
+
+api:
+  reboot_timeout: 0s
+
+ota:
+  - platform: esphome
+
+web_server:
+  port: 80
+
+# UART0 的 GPIO1/GPIO3 改作 LD2410B 数据口，必须关闭串口日志。
+# 日志仍可通过 ESPHome API 查看。
+logger:
+  baud_rate: 0
+  logs:
+    hdc1080: WARN
+    sgp30: WARN
+    sensor: WARN
+    component: ERROR
+
+uart:
+  - id: cm1106_uart
+    rx_pin: GPIO16
+    tx_pin: GPIO17
+    baud_rate: 9600
+  - id: ld2410_uart
+    rx_pin: GPIO3
+    tx_pin: GPIO1
+    baud_rate: 256000
+    parity: NONE
+    stop_bits: 1
+
+ld2410:
+  id: ld2410_radar
+  uart_id: ld2410_uart
+
+i2c:
+  - id: pm25_bus
+    sda: GPIO23
+    scl: GPIO22
+    scan: true
+  - id: th_bus
+    sda: GPIO19
+    scl: GPIO21
+    scan: true
+
+sensor:
+  - platform: custom
+    lambda: |-
+      auto cm1106_sensor = new CM1106Sensor(id(cm1106_uart), 10000);
+      App.register_component(cm1106_sensor);
+      return {cm1106_sensor};
+    sensors:
+      - name: "DAIKIN CO2 Sensor"
+        id: co2sensor
+        device_class: carbon_dioxide
+        state_class: measurement
+        unit_of_measurement: "ppm"
+
+  - platform: custom
+    lambda: |-
+      auto pm25 = new pm2005();
+      App.register_component(pm25);
+      return {pm25};
+    sensors:
+      - name: "DAIKIN PM2.5 Sensor"
+        id: pm25sensor
+        device_class: pm25
+        state_class: measurement
+        unit_of_measurement: "µg/m³"
+
+  - platform: ld2410
+    ld2410_id: ld2410_radar
+    moving_distance:
+      name: "DAIKIN Radar Moving Distance"
+    still_distance:
+      name: "DAIKIN Radar Still Distance"
+    moving_energy:
+      name: "DAIKIN Radar Moving Energy"
+    still_energy:
+      name: "DAIKIN Radar Still Energy"
+    detection_distance:
+      name: "DAIKIN Radar Detection Distance"
+
+  - platform: sgp30
+    i2c_id: th_bus
+    compensation:
+      temperature_source: temperature
+      humidity_source: humidity
+    eco2:
+      id: eco2sensor
+      internal: true
+    tvoc:
+      name: "DAIKIN TVOC Sensor"
+      id: tvocsensor
+      device_class: volatile_organic_compounds
+      unit_of_measurement: "µg/m³"
+      filters:
+        - throttle: 15s
+        - lambda: |-
+            if (x * id(tvocmultiply).state > id(tvocmax).state) {
+              return id(tvocmax).state;
+            }
+            return x * id(tvocmultiply).state;
+
+  - platform: hdc1080
+    i2c_id: th_bus
+    update_interval: 15s
+    temperature:
+      name: "DAIKIN Temperature Sensor"
+      id: temperature
+      filters:
+        - lambda: return x - id(temperatureoffset).state;
+    humidity:
+      name: "DAIKIN Humidity Sensor"
+      id: humidity
+      filters:
+        - lambda: return x * id(humiditymultiply).state;
+        - clamp:
+            max_value: 100
+
+  - platform: wifi_signal
+    name: "DAIKIN Signal"
+
+binary_sensor:
+  - platform: ld2410
+    ld2410_id: ld2410_radar
+    has_target:
+      name: "DAIKIN Radar Presence"
+      device_class: presence
+    has_moving_target:
+      name: "DAIKIN Radar Moving Target"
+      device_class: motion
+    has_still_target:
+      name: "DAIKIN Radar Still Target"
+      device_class: occupancy
+
+  - platform: template
+    internal: true
+    id: tvocch2olambda
+    lambda: |-
+      return id(indicator).state && id(tvocsensor).state > id(tvocthreshold).state;
+    on_press:
+      - switch.turn_on: tvocch2oled
+    on_release:
+      - switch.turn_off: tvocch2oled
+
+  - platform: template
+    internal: true
+    id: co2lambda
+    lambda: |-
+      return id(indicator).state && id(co2sensor).state > id(co2threshold).state;
+    on_press:
+      - switch.turn_on: co2led
+    on_release:
+      - switch.turn_off: co2led
+
+  - platform: template
+    internal: true
+    id: pm25lambda
+    lambda: |-
+      return id(indicator).state && id(pm25sensor).state > id(pm25threshold).state;
+    on_press:
+      - switch.turn_on: pm25led
+    on_release:
+      - switch.turn_off: pm25led
+
+  - platform: template
+    internal: true
+    id: co2_calibration
+    lambda: return id(co2sensor).state == 400;
+    filters:
+      - delayed_on: 5min
+    on_press:
+      - switch.turn_on: calibration
+
+  - platform: gpio
+    pin: GPIO34
+    id: RESET
+    internal: true
+    on_press:
+      - button.press: reset
+
+switch:
+  - platform: template
+    name: "DAIKIN LED Indicator"
+    restore_mode: RESTORE_DEFAULT_OFF
+    icon: mdi:led-off
+    id: indicator
+    optimistic: true
+
+  - platform: custom
+    lambda: |-
+      auto cm1106_calib = new CM1106CalibrateSwitch(id(cm1106_uart));
+      App.register_component(cm1106_calib);
+      return {cm1106_calib};
+    switches:
+      - id: calibration
+        internal: true
+
+  - platform: gpio
+    pin: GPIO4
+    id: co2led
+    internal: true
+  - platform: gpio
+    pin: GPIO32
+    id: tvocch2oled
+    internal: true
+  - platform: gpio
+    pin: GPIO33
+    id: pm25led
+    internal: true
+
+status_led:
+  pin: GPIO25
+
+number:
+  - platform: template
+    name: "DAIKIN Threshold CO2"
+    entity_category: config
+    id: co2threshold
+    optimistic: true
+    unit_of_measurement: "ppm"
+    min_value: 400
+    max_value: 5000
+    step: 100
+    initial_value: 1000
+    restore_value: true
+
+  - platform: template
+    name: "DAIKIN Threshold PM2.5"
+    entity_category: config
+    id: pm25threshold
+    optimistic: true
+    unit_of_measurement: "µg/m³"
+    min_value: 0
+    max_value: 200
+    step: 10
+    initial_value: 50
+    restore_value: true
+
+  - platform: template
+    name: "DAIKIN Threshold TVOC"
+    entity_category: config
+    id: tvocthreshold
+    optimistic: true
+    unit_of_measurement: "µg/m³"
+    min_value: 0
+    max_value: 20000
+    step: 1000
+    initial_value: 1000
+    restore_value: true
+
+  - platform: template
+    name: "DAIKIN TVOC MAX"
+    entity_category: config
+    id: tvocmax
+    optimistic: true
+    unit_of_measurement: "µg/m³"
+    min_value: 5000
+    max_value: 20000
+    step: 1000
+    initial_value: 10000
+    restore_value: true
+
+  - platform: template
+    name: "DAIKIN TVOC Multiply"
+    entity_category: config
+    id: tvocmultiply
+    optimistic: true
+    min_value: 1
+    max_value: 5
+    step: 0.1
+    initial_value: 3
+    restore_value: true
+
+  - platform: template
+    name: "DAIKIN Humidity Multiply"
+    entity_category: config
+    id: humiditymultiply
+    optimistic: true
+    min_value: 1
+    max_value: 1.6
+    step: 0.01
+    initial_value: 1.4
+    restore_value: true
+
+  - platform: template
+    name: "DAIKIN Temperature Offset"
+    entity_category: config
+    id: temperatureoffset
+    optimistic: true
+    min_value: 0
+    max_value: 10
+    step: 0.1
+    initial_value: 6
+    restore_value: true
+
+button:
+  - platform: restart
+    name: "DAIKIN Restart"
+    entity_category: diagnostic
+  - platform: factory_reset
+    id: reset
+    internal: true
+  - platform: template
+    name: "DAIKIN CO2 Calibration"
+    entity_category: diagnostic
+    on_press:
+      - switch.turn_on: calibration

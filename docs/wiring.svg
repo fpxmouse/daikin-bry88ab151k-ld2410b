@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="720" viewBox="0 0 1100 720">
+  <style>
+    text { font-family: "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #172033; }
+    .title { font-size: 30px; font-weight: 700; }
+    .head { font-size: 22px; font-weight: 700; }
+    .label { font-size: 20px; }
+    .note { font-size: 17px; }
+    .box { fill: #f7f9fc; stroke: #52647a; stroke-width: 2; rx: 16; }
+    .wire { fill: none; stroke-width: 5; }
+  </style>
+  <rect width="1100" height="720" fill="#ffffff"/>
+  <text x="550" y="52" text-anchor="middle" class="title">BRY88AB151K ↔ HLK-LD2410B 接线图</text>
+
+  <rect x="60" y="105" width="400" height="405" class="box"/>
+  <text x="260" y="145" text-anchor="middle" class="head">大金主板（ESP32）</text>
+  <text x="95" y="215" class="label">RXD 焊盘 / GPIO3</text>
+  <text x="95" y="290" class="label">TXD 焊盘 / GPIO1</text>
+  <text x="95" y="365" class="label">GND 焊盘</text>
+  <text x="95" y="440" class="label">已确认的 5V 供电点 *</text>
+
+  <rect x="640" y="105" width="400" height="405" class="box"/>
+  <text x="840" y="145" text-anchor="middle" class="head">HLK-LD2410B（5 针）</text>
+  <text x="710" y="215" class="label">2 UART_TX</text>
+  <text x="710" y="290" class="label">3 UART_RX</text>
+  <text x="710" y="365" class="label">4 GND</text>
+  <text x="710" y="440" class="label">5 VCC（5V）</text>
+  <text x="710" y="482" class="note">1 OUT：不接</text>
+
+  <path d="M 455 208 C 535 208, 565 208, 645 208" class="wire" stroke="#2563eb"/>
+  <path d="M 455 283 C 535 283, 565 283, 645 283" class="wire" stroke="#f59e0b"/>
+  <path d="M 455 358 C 535 358, 565 358, 645 358" class="wire" stroke="#111827"/>
+  <path d="M 455 433 C 535 433, 565 433, 645 433" class="wire" stroke="#dc2626"/>
+
+  <text x="550" y="195" text-anchor="middle" class="note" fill="#2563eb">接收 ← 发送</text>
+  <text x="550" y="270" text-anchor="middle" class="note" fill="#b45309">发送 → 接收</text>
+
+  <rect x="60" y="550" width="980" height="125" fill="#fff7ed" stroke="#ea580c" stroke-width="2" rx="12"/>
+  <text x="85" y="585" class="note">* RTX 刷机焊盘只确认 RXD/TXD/GND；不要把未标注焊盘当 5V。</text>
+  <text x="85" y="617" class="note">LD2410B 要求稳定 5V、供电能力大于 200mA。可用万用表确认板上 5V 点，或独立稳压 5V；独立供电必须共地。</text>
+  <text x="85" y="649" class="note">断电接线。GPIO1/GPIO3 仍是刷机串口；固件已关闭 UART 日志，必要时断开雷达再进行有线刷机。</text>
+</svg>
